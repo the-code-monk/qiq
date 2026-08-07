@@ -1,0 +1,82 @@
+
+🚀 A comprehensive Python management tool.
+
+\033[33moptions:\033[0m
+-h, --help            show this help message and exit
+
+📦 \033[32mMain Commands:\033[0m
+\033[33m-ipy, --install-python <version>\033[0m
+Install Python version.
+Example:
+qiq -ipy 3.12.13
+
+\033[33m-upy, --uninstall-python <version>\033[0m
+Uninstall a Python version
+Example:
+qiq -upy 3.12.13 (Must be installed)
+
+\033[33m-envs, --environments\033[0m
+Show installed Python versions.
+
+\033[33m-venv, --virtual-environment <version>\033[0m
+Create virtual environment from installed Python version.
+Example:
+qiq -venv 3.13.12
+
+📦 \033[32mVirtual Environment Prompt Commands:\033[0m
+
+\033[33m-l, --list [package ...]\033[0m
+List packages installed in current environment.
+Example:
+qiq --list (List all packages)
+qiq --list numpy onnx* (List packages whose name is numpy and starts with onnx.)
+
+\033[33m-t, --tree <package>\033[0m
+Show all the dependencies of the package in tree format.
+Example:
+qiq --tree numpy==2.2.2
+
+\033[33m-r, --require <filename>\033[0m           
+Create qiq package importer from <filename> in .qiq directory.
+Example:
+qiq --require requirements.txt
+Options: --refresh --ttl <seconds>
+--refresh -> Refresh package cache from PyPI
+--ttl <seconds> Refresh package cache if older then ttl.
+
+\033[33m-i, --install ...\033[0m
+Install Python packages from PyPI.
+Example:
+qiq -i numpy onnx (Install latest version of numpy and onnx)
+qiq -i numpy==2.3.0 (Install 2.3.0 version of numpy package)
+Options: --refresh --ttl <seconds>
+--refresh -> Refresh package cache from PyPI
+--ttl <seconds> Refresh package cache if older then ttl.
+
+\033[33m-u, --uninstall ...\033[0m
+Uninstall Python packages from current Python environment.
+Example:
+qiq -u numpy==2.3.0 (Unnstall 2.3.0 version of numpy package)
+
+\033[33m-o, --output infile outfile\033[0m
+Parse requirements.txt and create another one with fixed packages.
+Example:
+qiq -o requirements.txt output.txt
+
+\033[33m-c, --clean\033[0m
+Purge unused packages in current environment.
+
+\033[33m-d, --detail ...\033[0m
+Show various information about installed packages.
+Example:
+qiq -d numpy onnx
+
+\033[33m-p, --projects\033[0m
+Display a list of all the projects handled by qiq in current environment.
+
+ℹ️ \033[32mInfo Commands:\033[0m
+\033[33m-a, --about\033[0m
+Display information about qiq.
+
+\033[33m-v, --version\033[0m
+Display qiq version.

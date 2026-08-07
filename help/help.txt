@@ -1,0 +1,102 @@
+
+  A comprehensive Python management tool.
+  
+  options:
+  -h, --help            show this help message and exit
+  
+  Main Commands:
+  ==============
+  
+  -ipy, --install-python <version>
+  --------------------------------
+  Install Python version.
+  Example:
+  qiq -ipy 3.12.13
+  
+  -upy, --uninstall-python <version>
+  ----------------------------------
+  Uninstall a Python version
+  Example:
+  qiq -upy 3.12.13 (Must be installed)
+  
+  -envs, --environments
+  ---------------------
+  Show installed Python versions.
+  
+  -venv, --virtual-environment <version>
+  --------------------------------------
+  Create virtual environment from installed Python version.
+  Example:
+  qiq venv 3.13.12
+  
+  Virtual Environment Prompt Commands:
+  ====================================
+  
+  -l, --list [package ...]
+  ------------------------
+  List installed packages in current environment.
+  Example:
+  qiq --list (List all packages)
+  qiq --list numpy onnx* (List packages whose name is numpy and starts with onnx.)
+  
+  -t, --tree <package>
+  ----------
+  Show all the dependencies of the package in tree format.
+  Example:
+  qiq --tree numpy==2.2.2
+  
+  -r, --require <filename>
+  ------------------------
+  Create qiq package importer from <filename> in .qiq directory.
+  Example:
+  qiq --require requirements.txt
+  Options: --refresh --ttl <seconds>
+  --refresh -> Refresh package cache from PyPI
+  --ttl <seconds> Refresh package cache if older then ttl.
+  
+  -i, --install ...
+  -----------------
+  Install python packages from PyPI.
+  Example:
+  qiq -i numpy onnx (Install latest version of numpy and onnx)
+  qiq -i numpy==2.3.0 (Install 2.3.0 version of numpy package)
+  --refresh -> Refresh package cache from PyPI
+  --ttl <seconds> Refresh package cache if older then ttl.
+  
+  -u, --uninstall ...
+  -------------------
+  Uninstall Python packages from current Python environment.
+  Example:
+  qiq -u numpy==2.3.0 (Unnstall 2.3.0 version of numpy package)
+  
+  -o, --output infile outfile
+  ---------------------------
+  Parse requirements.txt and create another one with fixed packages.
+  Example:
+  qiq -o requirements.txt output.txt
+  
+  -c, --clean
+  -----------
+  Purge unused packages.
+  
+  -d, --detail ...
+  ----------------
+  Show various information about installed packages.
+  Example:
+  qiq -d numpy onnx
+  
+  -p, --projects
+  --------------
+  Display list of all the projects handled by qiq in current environment.
+  
+  Info Commands:
+  ==============
+  
+  -a, --about
+  -----------
+  Display information about qiq.
+  
+  -v, --version
+  -------------
+  Display qiq version.
+  

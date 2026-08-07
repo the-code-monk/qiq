@@ -1,0 +1,10 @@
+# python >=3.10.0 <= 3.15.0
+rich==14.3.3
+colorama==0.4.6
+setuptools==82.0.1
+wheel==0.46.3
+build==1.4.2
+requests==2.33.1
+packaging==26.0
+distlib==0.4.0
+resolvelib-1.2.1

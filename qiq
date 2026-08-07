@@ -1,0 +1,434 @@
+#!/bin/bash
+
+# ---------------------------------------
+# A comprehensive Python management tool.
+# https://github.com/the-code-monk/qiq
+# ---------------------------------------
+
+set -e
+
+export QIQ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# --------------------
+# Detect OS.
+# --------------------
+
+detect_os() {
+    case "$(uname -s)" in
+        Darwin)
+            echo "macos"
+            ;;
+        Linux)
+            echo "linux"
+            ;;
+        *)
+            echo "Error: Unsupported OS ($(uname -s))" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# --------------------
+# HomeBrew installation.
+# --------------------
+
+ensure_homebrew_and_deps() {
+    # Check if brew exists
+    if ! command -v brew >/dev/null 2>&1; then
+        echo "Homebrew not found. Installing..."
+
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+        # Add brew to PATH (important for fresh installs)
+        if [ -d "/opt/homebrew/bin" ]; then
+            # Apple Silicon
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        elif [ -d "/usr/local/bin" ]; then
+            # Intel
+            eval "$(/usr/local/bin/brew shellenv)"
+        fi
+    else
+        echo "Homebrew already installed"
+    fi
+
+    echo "Updating Homebrew..."
+    brew update
+
+    echo "Installing Python build dependencies..."
+
+    brew install \
+        openssl@3 \
+        readline \
+        sqlite3 \
+        xz \
+        zlib \
+        tcl-tk \
+        bzip2 \
+        libffi
+
+    echo "Dependencies installed"
+}
+
+# ------------------------
+# Python build environment
+# ------------------------
+
+setup_python_build_env() {
+    local deps=(openssl@3 readline sqlite3 xz zlib tcl-tk bzip2 libffi)
+
+    CPPFLAGS=""
+    LDFLAGS=""
+    PKG_CONFIG_PATH=""
+
+    for dep in "${deps[@]}"; do
+        prefix=$(brew --prefix "$dep")
+        CPPFLAGS="$CPPFLAGS -I$prefix/include"
+        LDFLAGS="$LDFLAGS -L$prefix/lib"
+        PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$prefix/lib/pkgconfig"
+    done
+
+    export CPPFLAGS LDFLAGS PKG_CONFIG_PATH
+}
+
+# --------------------
+# Print help from file.
+# --------------------
+print_help() {
+  local file="$(dirname "$0")/help/help-utf8.txt"
+  while IFS= read -r line; do
+    printf "%b\n" "$line"
+  done < "$file"
+}
+
+# -------------------------------
+# Detect package manager
+# -------------------------------
+detect_pkg_manager() {
+    if command -v apt >/dev/null; then
+        echo "apt"
+    elif command -v dnf >/dev/null; then
+        echo "dnf"
+    elif command -v yum >/dev/null; then
+        echo "yum"
+    else
+        echo "unknown"
+    fi
+}
+
+# -------------------------------
+# Install dependencies
+# -------------------------------
+install_deps() {
+    if [[ "$PKG" == "apt" ]]; then
+        sudo apt update
+        sudo apt install -y \
+            build-essential wget curl \
+            libssl-dev zlib1g-dev \
+            libbz2-dev libreadline-dev libsqlite3-dev \
+            libffi-dev libncursesw5-dev xz-utils \
+            tk-dev libxml2-dev libxmlsec1-dev liblzma-dev
+
+    elif [[ "$PKG" == "dnf" || "$PKG" == "yum" ]]; then
+        sudo $PKG groupinstall -y "Development Tools"
+        sudo $PKG install -y \
+            wget curl \
+            openssl-devel bzip2-devel libffi-devel \
+            zlib-devel xz-devel readline-devel \
+            sqlite-devel tk-devel libxml2-devel libxmlsec1-devel
+    fi
+}
+
+# If no command is found
+if [[ $# -eq 0 ]]; then
+  print_help
+  exit 1
+fi
+
+# Install Python
+if [[ "$1" = "-ipy" || "$1" = "--install-python" ]]; then
+  # Check if virtual environment is active.
+  if [[ -n ${QIQ_PYTHON_DIR:-} ]]; then
+    echo "Please exit from current virtual environment in order to install Python."
+    exit 1
+  fi
+
+  # Check if we have a second paramater i.e. 3.13.12 version
+  if [[ "$2" = "" ]]; then
+    echo "No version found to install."
+    echo "Example: qiq -ipy 3.13.12"
+    exit 1
+  fi
+
+  tarfile="Python-$2.tar.xz"
+  url="https://www.python.org/ftp/python/$2/$tarfile"
+
+  # Check if URL exists and is reachable
+  if ! curl -fIs "$url" >/dev/null; then
+      echo "Invalid or unreachable URL. $url"
+      exit 1
+  fi  
+
+  # Detect OS
+  os=$(detect_os)
+
+  # Check if python already installed
+  python_dir="$QIQ_DIR/python/python-$os/python-$2"
+  if [ -d "$python_dir" ]; then
+    if [ "$(ls -A "$python_dir")" ]; then
+        echo "Python $2 is already installed."
+        echo Uninstall it first using:
+        echo qiq -upy $2
+        exit 0
+    else
+        rm -rf "$python_dir"
+    fi
+  fi
+
+  if [ "$os" = "linux" ]; then
+    # Detect package manager
+    PKG=$(detect_pkg_manager)
+
+    if [[ "$PKG" == "unknown" ]]; then
+        echo "❌ Unsupported system (no apt/dnf/yum found)"
+        exit 1
+    fi
+
+    echo "==> Detected package manager: $PKG"
+    echo "==> Installing dependencies..."
+    install_deps
+  else
+    ensure_homebrew_and_deps
+    setup_python_build_env
+  fi
+  
+  # Create python-os directory
+  if [[ ! -d "$QIQ_DIR/python/python-$os" ]]; then
+      mkdir -p "$QIQ_DIR/python/python-$os"
+  fi
+  mkdir -p $python_dir
+      
+  # Create temp directory
+  if [[ -d "$QIQ_DIR/temp" ]]; then
+      rm -rf "$QIQ_DIR/temp"
+  fi
+  mkdir -p "$QIQ_DIR/temp"
+  
+  # Download file
+  file="$QIQ_DIR/temp/$tarfile"
+  echo "Downloading...$url"
+  curl -L "$url" -o "$file"
+
+  # Check if download succeeded
+  if [[ $? -ne 0 ]]; then
+      echo "$tarfile download failed."
+      exit 1
+  fi
+
+  # Extract inside temp
+  echo "Extracting..."
+  tar -xf "$file" -C "$QIQ_DIR/temp"
+
+  # Build python and install
+  cd "$QIQ_DIR/temp/Python-$2" || exit 1
+
+  if [ "$os" = "linux" ]; then
+    ./configure --prefix="$python_dir" --enable-optimizations --without-ensurepip
+    jobs=$(nproc)
+  else
+    ./configure \
+    --prefix="$python_dir" \
+    --enable-optimizations \
+    --without-ensurepip \
+    --with-openssl=$(brew --prefix openssl@3)
+    jobs=$(sysctl -n hw.ncpu)
+  fi
+
+  make -j"$jobs" || {
+    echo "Build failed"
+    exit 1
+  }
+
+  make altinstall
+
+  # Download pip
+  pipfile="$QIQ_DIR/temp/get-pip.py"
+  echo "Downloading...$pipfile"
+  curl -L "https://bootstrap.pypa.io/get-pip.py" -o "$pipfile"
+
+  version="$2" # Example 3.13.12
+  short="${version%.*}" # 3.13
+
+  # Create a sym link for pythonx.xx as python to access it easily on prompt
+  ln -s "$python_dir/bin/python$short" "$python_dir/bin/python"
+
+  # Install pip
+  "$python_dir/bin/python$short" "$pipfile"
+  # Upgrade pip
+  "$python_dir/bin/python$short" -m pip install --upgrade pip --no-warn-script-location
+  # Install minimal packages required for qiq
+  "$python_dir/bin/python$short" -m pip install -r "$QIQ_DIR/requirements.txt" --no-warn-script-location
+
+  # Create qiqpy console executable that can be used as python
+  "$python_dir/bin/python$short" "$QIQ_DIR/src/qiq_console.py"
+
+  # Creating qiq directories
+  mkdir -p "$python_dir/qiq/qiq-config"
+  mkdir -p "$python_dir/qiq/qiq-cache"
+  mkdir -p "$python_dir/qiq/qiq-packages"
+
+  # Create qiq.pth file and copy to Lib/site-packages.
+  # This will automatically imports all the packages
+  # in .qiq/qiqimporter.pth file 
+  qiq_pth_file="$python_dir/lib/python$short/site-packages/qiq.pth"
+  {
+      echo "$QIQ_DIR/src"
+  } > "$qiq_pth_file"
+  
+  echo "Python $2 successfully installed."
+  exit 0
+fi
+
+# Uninstall python
+if [[ "$1" = "-upy" || "$1" = "--uninstall-python" ]]; then
+  # Check if virtual environment is active.
+  if [[ -n ${QIQ_PYTHON_DIR:-} ]]; then
+    echo "Please exit from current virtual environment in order to install Python."
+    exit 1
+  fi
+  # Detect OS
+  os=$(detect_os)
+  # Check if python already installed
+  python_dir="$QIQ_DIR/python/python-$os/python-$2"
+  if [[ -d $python_dir ]]; then
+      echo "Are you sure you want to uninstall Python-$2?" 
+      read -p "It'll also remove all the installed packages. (y/n): " choice
+      if [[ "$choice" =~ ^[Nn]$ ]]; then
+          exit 0
+      fi
+      echo "Removing python-$2..."
+      rm -rf $python_dir
+      exit 0
+  else
+      echo "Python $2 is not installed."
+      exit 1
+  fi
+  exit 0
+fi
+
+# Create virtual environment
+if [[ "$1" = "-venv" || "$1" = "--virtual-environment" ]]; then
+  if [[ "$2" = "" ]]; then
+    echo "Error: You must provide an installed python version for the virtual environment creation."
+    echo "Example: qiq -venv 3.13.5"
+    exit 1
+  fi
+
+  if [ -n "$QIQ_PYTHON_DIR" ]; then
+    echo "Please exit from the current virtual environment prompt in order to create a new one."
+    exit 1
+  fi
+
+  # Check if there is already a qiq venv present in the current directory
+  if [ -f ".qiq/activate.sh" ]; then
+    echo "It seems there is already a qiq virtual environment installed in the current directory."
+      read -p "Are you sure you want to overwrite the existing environment? (y/n): " choice
+      if [[ "$choice" =~ ^[Nn]$ ]]; then
+          exit 0
+      fi
+  fi
+  # Detect OS
+  os=$(detect_os)
+
+  # Check if python is installed
+  if [ ! -d "$QIQ_DIR/python/python-$os/python-$2" ]; then
+    echo "Error: python-$2 is not installed."
+    exit 1
+  fi
+
+  qiq_venv_dir="$(pwd)/.qiq"
+  mkdir -p $qiq_venv_dir
+
+  activate="$QIQ_DIR/scripts/activate.sh"
+  deactivate="$QIQ_DIR/scripts/deactivate.sh"
+  qiq_ini="$QIQ_DIR/scripts/qiq.ini"
+  pypath="$QIQ_DIR/python/python-$os/python-$2/"
+
+  # Copy virtual environment scripts
+  cp -f "$activate" "$qiq_venv_dir/"
+  cp -f "$deactivate" "$qiq_venv_dir/"
+  # Copy if doesn't exists. Keep existing settings.
+  if [ ! -f "$qiq_venv_dir/qiq.ini" ]; then
+    cp -f "$qiq_ini" "$qiq_venv_dir/"
+  fi
+
+  version="$2" # Example 3.13.12
+  short="${version%.*}" # 3.13
+  
+  # Replace current environment path in activation script
+  if [ "$os" = "linux" ]; then
+    sed -i "s|XXXXX|$pypath|g" "$qiq_venv_dir/activate.sh"
+    sed -i "s|YYYYY|$short|g" "$qiq_venv_dir/activate.sh"
+  else
+    sed -i '' "s|XXXXX|$pypath|g" "$qiq_venv_dir/activate.sh"
+    sed -i '' "s|YYYYY|$short|g" "$qiq_venv_dir/activate.sh"
+  fi
+  
+  echo Use this command to activate the virtual environment.
+  echo source .qiq/activate.sh  
+
+  exit 0
+fi
+
+# Show list of installed python versions or environments
+if [[ "$1" = "-envs" || "$1" = "--environments" ]]; then
+  echo "Python Environments..."
+  # Detect OS
+  os=$(detect_os)
+  for d in "$QIQ_DIR/python/python-$os/"*; do
+    [ -d "$d" ] && basename "$d"
+  done
+  exit 0
+fi
+
+# Show qiq version
+if [[ "$1" = "-v" || "$1" = "--version" ]]; then
+  version=$(<"$QIQ_DIR/VERSION")
+  echo "Version : $version"
+  exit 0
+fi
+
+# All python commands
+options=(-l --list \
+ -t --tree \
+  -a --about \
+   -d --detail \
+    -p --projects \
+     -c --clean \
+      -r --require \
+       -i --install \
+        -u --uninstall \
+         -o --output)
+for opt in "${options[@]}"; do
+  if [[ "$1" == "$opt" ]]; then
+    if [[ -z "${QIQ_PYTHON_DIR:-}" ]]; then
+      echo "Error: Virtual Environment is not active."
+      exit 0
+    else
+      $PYTHON_EXE $QIQ_DIR/src/qiq_main.py $@
+      exit 0
+    fi
+  fi
+done
+
+# Show qiq help
+if [[ "$1" = "-h" || "$1" = "--help" ]]; then
+  print_help
+  exit 0
+fi
+
+echo "Unknown command: $1"
+echo "Use -h or --help"
+
+
+
+
