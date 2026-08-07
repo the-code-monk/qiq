@@ -62,7 +62,7 @@ class QiQ_Cmnd_Require:
         
     def run(self, 
         file_name: str,
-        ttl: float=0.0,
+        ttl: float=QiQ_Package_Cache.DEFAULT_TTL,
         refresh: bool=False
         ) -> None:
         """Parse requirements.txt and create qiq package importer.

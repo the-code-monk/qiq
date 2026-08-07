@@ -9,6 +9,7 @@ import sys
 import json
 import glob
 import shutil
+import platform
 import traceback
 from collections import Counter
 from pathlib import PurePath, Path
@@ -506,26 +507,29 @@ def can_package_uninstalled(specifier: str, proj_paths: List, print_info: bool =
     bool
         If specifier can be safely removed.
     """
-        
+    plat = platform.system().lower()
+            
     all_packages = {}
-    for path in proj_paths:
-        data = load_json(path)
+    for project_dir in proj_paths:
+        pkg_json = os.path.join(project_dir, '.qiq', plat + ".json")
+        if not os.path.isfile(pkg_json):
+            continue
+        data = load_json(pkg_json)
         if not "packages" in data:
-            print(f"{C.RED}Old format {C.YELLOW}{path}, {C.RESET}please update it.")
+            print(f"{C.RED}Old format {C.YELLOW}{project_dir}, {C.RESET}please update it.")
             continue
         # Iterate over package in the file
         for pkg in data['packages']:
             pkg = pkg.strip()
             if not pkg in all_packages.keys():
                 all_packages[pkg] = set()
-            all_packages[pkg].add(path)
+            all_packages[pkg].add(project_dir)
 
     if specifier in all_packages.keys():
         print(f"\nCannot delete {print_specifier(specifier, False)}.\n")
         print(f"{print_specifier(specifier, False)} {C.RESET}is required in these projects:\n")
         for idx, p in enumerate(all_packages[specifier]):
-            pt = os.path.join(*PurePath(p).parts[0:-2])
-            print(f"{C.YELLOW}{idx+1:<3}{C.RESET}{pt}")
+            print(f"{C.YELLOW}{idx+1:<3}{C.RESET}{p}")
         return False
     else:
         return True
@@ -570,7 +574,7 @@ def _delete_package(package: str) -> None:
 
     # Delete package folder
     if os.path.exists(package_dir):
-        print(f"{print_specifier(package, False)}...")
+        print(f"{C.RED}Removing : {print_specifier(package, False)}...")
         shutil.rmtree(package_dir, onerror=handle_error)
 
 def delete_packages(packages: List) -> None:
@@ -588,7 +592,6 @@ def delete_packages(packages: List) -> None:
 
     # Remove all the packages from disk in qiq-packages directory of current python.
     for pkg in packages:
-        print(f"{C.RED}Removing : {print_specifier(pkg, False)}")
         # Delete main package
         _delete_package(pkg)
 

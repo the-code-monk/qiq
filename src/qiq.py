@@ -223,8 +223,8 @@ class QiQ:
                     print(p)
 
             # Check if we should remove site_packages import
-            if self.config["DEFAULT"].get("QIQ_IMPORT_FROM_SITE_PACKAGES", "0") == "0":
-                self.remove_site_packages()
+            #if self.config["DEFAULT"].get("QIQ_IMPORT_FROM_SITE_PACKAGES", "0") == "0":
+                #self.remove_site_packages()
 
 def get_package_dir(name: str, version: str) -> str:
     """Return package path from name & version.
