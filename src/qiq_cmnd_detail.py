@@ -19,6 +19,7 @@ __version__ = "0.0.3"
 from typing import List
 import os
 import json
+import platform
 from pathlib import Path
 from pathlib import PurePath
 
@@ -59,20 +60,25 @@ class QiQ_Cmnd_Detail:
                 latest = "(Latest)" if d == version else ''
                 print(f"{C.YELLOW}{name}{C.RESET}=={C.CYAN}{d}{C.RESET} {is_inst} {latest}")
 
-    def _is_package_in_project(self, file_name: str, name: str) -> str:
+    def _is_package_in_project(self, project_dir: str, name: str) -> str:
         """Return if package by name exists in pkg.json importer file.
         
         Parameters
         ----------
-        file_name : str
-            pkg.json file.
+        project_dir : str
+            Project directory
         name : str
             Name of the package.
 
         Returns:
             name==version if exists in file else ''
         """
-        data = utils.load_json(file_name)
+        plat = platform.system().lower()
+        pkg_json = os.path.join(project_dir, '.qiq', plat + ".json")
+        if not os.path.isfile(pkg_json):
+            return ''
+        
+        data = utils.load_json(pkg_json)
 
         if not "packages" in data:
             print(f"{C.RED}Old format error : {C.YELLOW}{file_name}, {C.RESET}Please update it.")
@@ -97,25 +103,23 @@ class QiQ_Cmnd_Detail:
         all_pkgs = {}
         proj_paths = utils.load_projects()
         for p in proj_paths:
-            if not os.path.isfile(p):
-                print(f"{C.RED}Error: {C.RESET}Path {p} does not exists in projects.json")
+            if not os.path.isdir(p):
+                print(f"{C.RED}Error: {C.RESET}Path {p} does not exists")
                 continue
             pkg = self._is_package_in_project(p, name)
             if pkg:
                 if pkg not in list(all_pkgs.keys()):
                     all_pkgs[pkg] = [p]
                 else:
-                    all_pkgs[pkg].append(p)                    
+                    all_pkgs[pkg].append(p)       
         
         if all_pkgs:
             print(f"{C.GREEN}Used in projects...")
             for pkg, projs in all_pkgs.items():
                 name, version = pkg.split("==")
                 print(f"{C.YELLOW}{name}{C.RESET}=={C.CYAN}{version}{C.RESET} ({len(projs)})")
-                for path in projs:
-                    pp = PurePath(path.strip())
-                    folder = os.sep.join(list(pp.parts[0:-2]))
-                    print(folder)
+                for proj_dir in projs:
+                    print(proj_dir)
 
     def run(self, packages: List[str]) -> None:
         """List various information about packages.
