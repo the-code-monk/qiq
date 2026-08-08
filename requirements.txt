@@ -7,4 +7,4 @@ build==1.4.2
 requests==2.33.1
 packaging==26.0
 distlib==0.4.0
-resolvelib-1.2.1
+resolvelib==1.2.1

@@ -103,9 +103,12 @@ class QiQ_Cmnd_Require:
 
         # 👉 Write qiq.json file
         utils.save_json(data, qiqimporter_path)
-    
+        
+        # Get the project directory in which this command is issued
+        project_directory = Path(C.QIQ_VENV_DIR).resolve().parent
+        
         # 👉 Add directory to projects cache for this python environment.
-        self._add_platform_json_path_to_projects(Path(__file__).resolve().parent)
+        self._add_platform_json_path_to_projects(project_directory)
 
         # 👉 Done
         print(f"\n{C.YELLOW}Message : {C.RESET}A qiq package importer has been created in {C.CYAN}.qiq {C.RESET}directory.\n")
