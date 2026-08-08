@@ -213,12 +213,15 @@ class QiQ_Cmnd_Install:
 
         all_pkgs_n_deps = []
 
-        print(f"{C.GREEN}Info : {C.YELLOW}Fetching package/s and dependencies...")
-        print()
-        
         # Resolve package tree
         # {pkg:[deps], pkg:[deps], ...}
         resolve_packages = QiQ_Package_Resolver(ttl, refresh).get(packages)
+
+        if resolve_packages is None:
+            utils.display_error("{C.RED}Error : {C.RESET}{}", "Dependency conflict")
+
+        print(f"{C.GREEN}Info : {C.YELLOW}Fetching package/s and dependencies...")
+        print()
 
         # Create a flat list of packages
         for pkg, deps in resolve_packages.items():

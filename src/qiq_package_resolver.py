@@ -15,6 +15,7 @@ Output:
 __version__ = "0.0.1"
 
 # python imports
+import sys
 import json
 import threading
 import time
@@ -325,6 +326,7 @@ class QiQ_Package_Resolver:
 
     def _get(self, roots: list[Requirement]):
         start = time.monotonic()
+        result = None
         try:
             # All root package names are already known from requirements.txt
             # no need to wait for resolvelib to discover them one at a time.
@@ -333,7 +335,6 @@ class QiQ_Package_Resolver:
             result = self.resolver.resolve(roots)
         except ResolutionImpossible as exc:
             print(self._explain_conflict(exc))
-            exit()
         finally:
             self.client.shutdown()
             self.cache.close()
@@ -345,6 +346,8 @@ class QiQ_Package_Resolver:
         """"""
         roots = self._filter_roots(roots)
         results = self._get(roots)
+        if results is None:
+            return results
         tree = self._build_dependency_tree(results)
         return tree
 
@@ -352,5 +355,7 @@ class QiQ_Package_Resolver:
         """"""
         roots = self._filter_roots([root])
         results = self._get([root])
+        if results is None:
+            return results
         tree = self._render_dependency_tree(results)
         return tree
