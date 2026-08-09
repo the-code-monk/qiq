@@ -481,7 +481,9 @@ def delete_empty_directories_in_qiq_packages() -> None:
                 try:
                     os.rmdir(full)  # succeeds only if empty
                 except OSError:
-                    pass  # directory wasn't empty
+                    # directory wasn't empty
+                    print(f"{C.RED}Error : {C.RESET}Directory is not empty: {C.YELLOW}{full}")
+                    print(f"{C.RED}Error : {C.RESET}Not able to remove it.")
 
 def can_package_uninstalled(specifier: str, proj_paths: List, print_info: bool = True) -> bool:
     """Check if package can be uninstalled.
